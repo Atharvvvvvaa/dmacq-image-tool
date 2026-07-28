@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Generate dMACQ blog header images from a product tag, one-liner, and background photo — no Figma needed.">
+<title>dMACQ Marketing Image Generator</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f1216'/%3E%3Ctext x='32' y='42' font-family='Arial, sans-serif' font-weight='700' font-size='30' fill='%233ea6ff' text-anchor='middle'%3Ed%2B%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #171b21;
+    --panel-2: #1e232b;
+    --border: #2a3038;
+    --text: #e8eaed;
+    --muted: #8b929c;
+    --accent: #3ea6ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Noto Sans", -apple-system, "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 700; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 28px; }
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 24px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .field { margin-bottom: 18px; }
+  label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
+  select, input[type=text], textarea {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 64px; }
+  select:focus, input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .dropzone {
+    border: 1.5px dashed var(--border); border-radius: 8px; padding: 22px 14px; text-align: center;
+    cursor: pointer; color: var(--muted); font-size: 13px; transition: border-color .15s, color .15s;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); color: var(--text); }
+  .dropzone input { display: none; }
+  .slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .slider-row label { margin: 0; min-width: 64px; flex-shrink: 0; }
+  .slider-row input[type=range] { flex: 1; }
+  .hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+  .preview-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .preview-card h3 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .preview-card h3 span.dim { color: #5b6270; font-weight: 400; }
+  canvas { width: 100%; height: auto; border-radius: 8px; display: block; background: #05060a; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #06121e;
+    border: none; padding: 9px 16px; border-radius: 7px; font-weight: 700; font-size: 13px; cursor: pointer;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .status { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; }
+  .zoom-controls { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>dMACQ Marketing Image Generator</h1>
+  <p class="sub">Upload the background photo, drop in the one-liner, get the blog image — no Figma, no design step.</p>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="field">
+        <label>Product tag</label>
+        <select id="productSelect">
+          <option>DMS+</option>
+          <option>AP+</option>
+          <option>FORMS+</option>
+          <option>FLOW+</option>
+          <option>DIGI+</option>
+          <option value="__custom">Custom…</option>
+        </select>
+        <input type="text" id="productCustom" placeholder="Custom tag text" style="margin-top:8px; display:none;">
+      </div>
+
+      <div class="field">
+        <label>Headline (one-liner)</label>
+        <textarea id="headline">Simplify Document Management &amp; Control</textarea>
+      </div>
+
+      <div class="field">
+        <label>Background image</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept="image/*">
+          <span id="dropzoneLabel">Click to upload, or drag an image here</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Image adjustments</label>
+        <div class="zoom-controls">
+          <div class="slider-row">
+            <label style="min-width:44px;">Zoom</label>
+            <input type="range" id="zoom" min="100" max="250" value="100">
+          </div>
+          <div class="slider-row">
+            <label style="min-width:44px;">Pan X</label>
+            <input type="range" id="panX" min="-100" max="100" value="0">
+          </div>
+          <div class="slider-row">
+            <label style="min-width:44px;">Pan Y</label>
+            <input type="range" id="panY" min="-100" max="100" value="0">
+          </div>
+          <div class="hint">Or just drag directly on the preview image to reposition it. Double-click to reset.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Overlay strength</label>
+        <input type="range" id="overlayStrength" min="0" max="100" value="70">
+      </div>
+
+      <div class="status" id="status">Waiting for an image…</div>
+    </div>
+
+    <div class="preview-card">
+      <h3>Blog header <span class="dim">2280 × 1284</span></h3>
+      <canvas id="canvasBlog" width="2280" height="1284"></canvas>
+      <div class="btn-row">
+        <button class="btn" id="dlPng">Download PNG</button>
+        <button class="btn secondary" id="dlSvg">Download SVG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let bgImage = null;
+let bgDataUrl = null;
+let pan = { x: 0, y: 0 }; // drag offset, in canvas px (at native 2280x1284 scale)
+let dragging = false;
+let dragStart = { x: 0, y: 0 };
+let panStart = { x: 0, y: 0 };
+
+const W = 2280, H = 1284;
+
+const els = {
+  product: document.getElementById('productSelect'),
+  productCustom: document.getElementById('productCustom'),
+  headline: document.getElementById('headline'),
+  fileInput: document.getElementById('fileInput'),
+  dropzone: document.getElementById('dropzone'),
+  dropzoneLabel: document.getElementById('dropzoneLabel'),
+  zoom: document.getElementById('zoom'),
+  panX: document.getElementById('panX'),
+  panY: document.getElementById('panY'),
+  overlay: document.getElementById('overlayStrength'),
+  status: document.getElementById('status'),
+  canvasBlog: document.getElementById('canvasBlog'),
+};
+
+function currentTag() {
+  if (els.product.value === '__custom') return els.productCustom.value.trim() || 'TAG+';
+  return els.product.value;
+}
+
+els.product.addEventListener('change', () => {
+  els.productCustom.style.display = els.product.value === '__custom' ? 'block' : 'none';
+  render();
+});
+[els.productCustom, els.headline, els.overlay].forEach(el => el.addEventListener('input', render));
+[els.zoom, els.panX, els.panY].forEach(el => el.addEventListener('input', () => {
+  pan.x = Number(els.panX.value) / 100 * (W * 0.35);
+  pan.y = Number(els.panY.value) / 100 * (H * 0.35);
+  render();
+}));
+
+els.dropzone.addEventListener('click', () => els.fileInput.click());
+els.dropzone.addEventListener('dragover', e => { e.preventDefault(); els.dropzone.classList.add('drag'); });
+els.dropzone.addEventListener('dragleave', () => els.dropzone.classList.remove('drag'));
+els.dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  els.dropzone.classList.remove('drag');
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+});
+els.fileInput.addEventListener('change', e => {
+  if (e.target.files && e.target.files[0]) loadImage(e.target.files[0]);
+});
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      bgImage = img;
+      bgDataUrl = e.target.result;
+      els.dropzoneLabel.textContent = file.name;
+      els.status.textContent = 'Image loaded — drag on preview to reposition, or use sliders.';
+      els.zoom.value = 100; els.panX.value = 0; els.panY.value = 0;
+      pan = { x: 0, y: 0 };
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Drag-to-pan directly on canvas
+els.canvasBlog.addEventListener('mousedown', e => {
+  if (!bgImage) return;
+  dragging = true;
+  const rect = els.canvasBlog.getBoundingClientRect();
+  const scale = W / rect.width;
+  dragStart = { x: e.clientX, y: e.clientY };
+  panStart = { x: pan.x, y: pan.y };
+  els.canvasBlog._scale = scale;
+});
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const scale = els.canvasBlog._scale || 1;
+  pan.x = panStart.x + (e.clientX - dragStart.x) * scale;
+  pan.y = panStart.y + (e.clientY - dragStart.y) * scale;
+  render();
+});
+window.addEventListener('mouseup', () => { dragging = false; });
+els.canvasBlog.addEventListener('dblclick', () => {
+  pan = { x: 0, y: 0 };
+  els.zoom.value = 100; els.panX.value = 0; els.panY.value = 0;
+  render();
+});
+
+// ---- Text layout helpers ----
+
+function wrapText(ctx, text, maxWidth, maxLines) {
+  const words = text.split(/\s+/);
+  let lines = [];
+  let current = '';
+  for (const word of words) {
+    const test = current ? current + ' ' + word : word;
+    if (ctx.measureText(test).width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = test;
+    }
+  }
+  if (current) lines.push(current);
+  if (lines.length > maxLines) {
+    lines = lines.slice(0, maxLines);
+    let last = lines[maxLines - 1];
+    while (ctx.measureText(last + '…').width > maxWidth && last.length > 0) {
+      last = last.slice(0, -1);
+    }
+    lines[maxLines - 1] = last.replace(/\s+$/, '') + '…';
+  }
+  return lines;
+}
+
+function fitHeadline(ctx, text, maxWidth, maxHeight, maxLines, startSize, weight) {
+  let size = startSize;
+  let lines, lineHeight;
+  while (size > 24) {
+    ctx.font = `${weight} ${size}px "Noto Sans", Arial, sans-serif`;
+    lines = wrapText(ctx, text, maxWidth, maxLines);
+    lineHeight = size * 1.18;
+    if (lines.length * lineHeight <= maxHeight) break;
+    size -= 2;
+  }
+  return { size, lines, lineHeight };
+}
+
+// Compute the cover-fit rect for the background image, plus zoom/pan
+function getImageRect() {
+  const zoomFactor = Number(els.zoom.value) / 100;
+  const ir = bgImage.width / bgImage.height;
+  const cr = W / H;
+  let dw, dh;
+  if (ir > cr) { dh = H; dw = H * ir; } else { dw = W; dh = W / ir; }
+  dw *= zoomFactor; dh *= zoomFactor;
+  let dx = (W - dw) / 2 + pan.x;
+  let dy = (H - dh) / 2 + pan.y;
+  // clamp so image always covers the frame
+  dx = Math.min(0, Math.max(dx, W - dw));
+  dy = Math.min(0, Math.max(dy, H - dh));
+  return { dx, dy, dw, dh };
+}
+
+function drawScene(ctx) {
+  ctx.clearRect(0, 0, W, H);
+
+  if (bgImage) {
+    const { dx, dy, dw, dh } = getImageRect();
+    ctx.drawImage(bgImage, dx, dy, dw, dh);
+  } else {
+    ctx.fillStyle = '#12151a';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#4a5058';
+    ctx.font = `${Math.round(H * 0.045)}px "Noto Sans", Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Upload a background image', W / 2, H / 2);
+    ctx.textAlign = 'left';
+  }
+
+  const strength = els.overlay.value / 100;
+  const grad = ctx.createLinearGradient(0, H * 0.25, 0, H);
+  grad.addColorStop(0, `rgba(5,6,10,0)`);
+  grad.addColorStop(0.55, `rgba(5,6,10,${0.15 * strength})`);
+  grad.addColorStop(1, `rgba(5,6,10,${0.92 * strength})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = `rgba(5,6,10,${0.12 * strength})`;
+  ctx.fillRect(0, 0, W, H);
+
+  const marginX = W * 0.045;
+  const rightPad = W * 0.045;
+  const maxTextWidth = W - marginX - rightPad;
+
+  const tag = currentTag();
+  const badgeFontSize = Math.round(H * 0.034);
+  ctx.font = `700 ${badgeFontSize}px "Noto Sans", Arial, sans-serif`;
+  const tagWidth = ctx.measureText(tag).width;
+  const padX = H * 0.024;
+  const padY = H * 0.016;
+  const badgeH = badgeFontSize + padY * 2;
+  const badgeW = tagWidth + padX * 2;
+  const badgeY = H * 0.775 - badgeH;
+  const radius = badgeH / 2;
+
+  ctx.fillStyle = '#ffffff';
+  roundRect(ctx, marginX, badgeY, badgeW, badgeH, radius);
+  ctx.fill();
+
+  ctx.fillStyle = '#0d0d0f';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(tag, marginX + padX, badgeY + badgeH / 2 + 1);
+  ctx.textBaseline = 'alphabetic';
+
+  const headlineText = els.headline.value.trim() || 'Your one-liner goes here';
+  const headlineTop = badgeY + badgeH + H * 0.035;
+  const headlineMaxHeight = H - headlineTop - H * 0.06;
+  const startSize = Math.round(H * 0.062);
+  const { size, lines, lineHeight } = fitHeadline(ctx, headlineText, maxTextWidth, headlineMaxHeight, 2, startSize, 700);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `700 ${size}px "Noto Sans", Arial, sans-serif`;
+  let ty = headlineTop + size * 0.85;
+  for (const line of lines) {
+    ctx.fillText(line, marginX, ty);
+    ty += lineHeight;
+  }
+
+  return { tag, lines, size, lineHeight, headlineTop, badgeY, badgeH, badgeW, marginX, radius, padX };
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function render() {
+  const ctx = els.canvasBlog.getContext('2d');
+  drawScene(ctx);
+}
+
+// ---- Export ----
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
+function downloadPng() {
+  render(); // ensure canvas reflects current state right before export
+  const tag = currentTag().replace(/\W+/g, '');
+  els.canvasBlog.toBlob(blob => {
+    if (!blob) {
+      els.status.textContent = 'PNG export failed — try again, or use a smaller image.';
+      return;
+    }
+    triggerDownload(blob, `${tag}-blog-2280x1284.png`);
+    els.status.textContent = 'PNG downloaded.';
+  }, 'image/png');
+}
+
+function downloadSvg() {
+  const ctx = els.canvasBlog.getContext('2d');
+  const layout = drawScene(ctx); // recompute layout values (also redraws canvas identically)
+  const strength = els.overlay.value / 100;
+
+  let imageEl = '';
+  if (bgImage) {
+    const { dx, dy, dw, dh } = getImageRect();
+    imageEl = `<image href="${bgDataUrl}" x="${dx.toFixed(1)}" y="${dy.toFixed(1)}" width="${dw.toFixed(1)}" height="${dh.toFixed(1)}" preserveAspectRatio="none"/>`;
+  } else {
+    imageEl = `<rect width="${W}" height="${H}" fill="#12151a"/>`;
+  }
+
+  const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const linesSvg = layout.lines.map((line, i) => {
+    const y = layout.headlineTop + layout.size * 0.85 + i * layout.lineHeight;
+    return `<text x="${layout.marginX.toFixed(1)}" y="${y.toFixed(1)}" font-family="Noto Sans, Arial, sans-serif" font-weight="700" font-size="${layout.size}" fill="#ffffff">${escape(line)}</text>`;
+  }).join('\n    ');
+
+  const badgeTextX = layout.marginX + layout.padX;
+  const badgeTextY = layout.badgeY + layout.badgeH / 2;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <linearGradient id="overlay" x1="0" y1="${(H*0.25).toFixed(1)}" x2="0" y2="${H}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#05060a" stop-opacity="0"/>
+      <stop offset="0.55" stop-color="#05060a" stop-opacity="${(0.15*strength).toFixed(3)}"/>
+      <stop offset="1" stop-color="#05060a" stop-opacity="${(0.92*strength).toFixed(3)}"/>
+    </linearGradient>
+  </defs>
+  <g>
+    ${imageEl}
+    <rect width="${W}" height="${H}" fill="url(#overlay)"/>
+    <rect width="${W}" height="${H}" fill="#05060a" opacity="${(0.12*strength).toFixed(3)}"/>
+    <rect x="${layout.marginX.toFixed(1)}" y="${layout.badgeY.toFixed(1)}" width="${layout.badgeW.toFixed(1)}" height="${layout.badgeH.toFixed(1)}" rx="${layout.radius.toFixed(1)}" fill="#ffffff"/>
+    <text x="${badgeTextX.toFixed(1)}" y="${badgeTextY.toFixed(1)}" font-family="Noto Sans, Arial, sans-serif" font-weight="700" font-size="${Math.round(H*0.034)}" fill="#0d0d0f" dominant-baseline="middle">${escape(layout.tag)}</text>
+    ${linesSvg}
+  </g>
+</svg>`;
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const tag = currentTag().replace(/\W+/g, '');
+  triggerDownload(blob, `${tag}-blog-2280x1284.svg`);
+  els.status.textContent = 'SVG downloaded.';
+}
+
+document.getElementById('dlPng').addEventListener('click', () => {
+  try { downloadPng(); }
+  catch (err) { els.status.textContent = 'PNG export error: ' + err.message; }
+});
+document.getElementById('dlSvg').addEventListener('click', () => {
+  try { downloadSvg(); }
+  catch (err) { els.status.textContent = 'SVG export error: ' + err.message; }
+});
+
+document.fonts.ready.then(render);
+render();
+</script>
+</body>
+</html>
