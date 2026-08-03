@@ -342,11 +342,11 @@ function drawScene(ctx) {
   const headlineText = els.headline.value.trim() || 'Your one-liner goes here';
   const headlineTop = badgeY + badgeH + H * 0.035;
   const headlineMaxHeight = H - headlineTop - H * 0.06;
-  const startSize = Math.round(H * 0.062);
-  const { size, lines, lineHeight } = fitHeadline(ctx, headlineText, maxTextWidth, headlineMaxHeight, 2, startSize, 700);
+  const startSize = 100;
+  const { size, lines, lineHeight } = fitHeadline(ctx, headlineText, maxTextWidth, headlineMaxHeight, 2, startSize, 400);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = `700 ${size}px "Noto Sans", Arial, sans-serif`;
+  ctx.font = `400 ${size}px "Noto Sans", Arial, sans-serif`;
   let ty = headlineTop + size * 0.85;
   for (const line of lines) {
     ctx.fillText(line, marginX, ty);
@@ -417,7 +417,7 @@ function downloadSvg() {
 
   const linesSvg = layout.lines.map((line, i) => {
     const y = layout.headlineTop + layout.size * 0.85 + i * layout.lineHeight;
-    return `<text x="${layout.marginX.toFixed(1)}" y="${y.toFixed(1)}" font-family="Noto Sans, Arial, sans-serif" font-weight="700" font-size="${layout.size}" fill="#ffffff">${escape(line)}</text>`;
+    return `<text x="${layout.marginX.toFixed(1)}" y="${y.toFixed(1)}" font-family="Noto Sans, Arial, sans-serif" font-weight="400" font-size="${layout.size}" fill="#ffffff">${escape(line)}</text>`;
   }).join('\n    ');
 
   const badgeTextX = layout.marginX + layout.padX;
