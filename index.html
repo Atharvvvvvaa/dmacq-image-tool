@@ -260,19 +260,6 @@ function wrapText(ctx, text, maxWidth, maxLines) {
   return lines;
 }
 
-function fitHeadline(ctx, text, maxWidth, maxHeight, maxLines, startSize, weight) {
-  let size = startSize;
-  let lines, lineHeight;
-  while (size > 24) {
-    ctx.font = `${weight} ${size}px "Noto Sans", Arial, sans-serif`;
-    lines = wrapText(ctx, text, maxWidth, maxLines);
-    lineHeight = size * 1.18;
-    if (lines.length * lineHeight <= maxHeight) break;
-    size -= 2;
-  }
-  return { size, lines, lineHeight };
-}
-
 // Compute the cover-fit rect for the background image, plus zoom/pan
 function getImageRect() {
   const zoomFactor = Number(els.zoom.value) / 100;
@@ -321,39 +308,48 @@ function drawScene(ctx) {
 
   const tag = currentTag();
   const badgeFontSize = Math.round(H * 0.034);
-  ctx.font = `700 ${badgeFontSize}px "Noto Sans", Arial, sans-serif`;
-  const tagWidth = ctx.measureText(tag).width;
   const padX = H * 0.024;
   const padY = H * 0.016;
   const badgeH = badgeFontSize + padY * 2;
-  const badgeW = tagWidth + padX * 2;
-  const badgeY = H * 0.775 - badgeH;
   const radius = badgeH / 2;
+  ctx.font = `700 ${badgeFontSize}px "Noto Sans", Arial, sans-serif`;
+  const tagWidth = ctx.measureText(tag).width;
+  const badgeW = tagWidth + padX * 2;
+
+  const headlineText = els.headline.value.trim() || 'Your one-liner goes here';
+  const size = 100;
+  const gap = H * 0.035;
+  ctx.font = `400 ${size}px "Noto Sans", Arial, sans-serif`;
+  const lines = wrapText(ctx, headlineText, maxTextWidth, 2);
+  const lineHeight = size * 1.18;
+
+  // Fixed anchor: where the LAST line's baseline sits for a single-line headline.
+  // Both the headline block and the badge above it shift up together as lines are added,
+  // so bottom padding stays constant and the badge-to-headline gap stays constant.
+  const lastBaseline = H * 0.81 + size * 0.85;
+  const firstLineY = lastBaseline - (lines.length - 1) * lineHeight;
+  const headlineTop = firstLineY - size * 0.85;
+  const badgeY = headlineTop - gap - badgeH;
 
   ctx.fillStyle = '#ffffff';
   roundRect(ctx, marginX, badgeY, badgeW, badgeH, radius);
   ctx.fill();
 
   ctx.fillStyle = '#0d0d0f';
+  ctx.font = `700 ${badgeFontSize}px "Noto Sans", Arial, sans-serif`;
   ctx.textBaseline = 'middle';
   ctx.fillText(tag, marginX + padX, badgeY + badgeH / 2 + 1);
   ctx.textBaseline = 'alphabetic';
 
-  const headlineText = els.headline.value.trim() || 'Your one-liner goes here';
-  const headlineTop = badgeY + badgeH + H * 0.035;
-  const headlineMaxHeight = H - headlineTop - H * 0.06;
-  const startSize = 100;
-  const { size, lines, lineHeight } = fitHeadline(ctx, headlineText, maxTextWidth, headlineMaxHeight, 2, startSize, 400);
-
   ctx.fillStyle = '#ffffff';
   ctx.font = `400 ${size}px "Noto Sans", Arial, sans-serif`;
-  let ty = headlineTop + size * 0.85;
+  let ty = firstLineY;
   for (const line of lines) {
     ctx.fillText(line, marginX, ty);
     ty += lineHeight;
   }
 
-  return { tag, lines, size, lineHeight, headlineTop, badgeY, badgeH, badgeW, marginX, radius, padX };
+  return { tag, lines, size, lineHeight, headlineTop, firstLineY, badgeY, badgeH, badgeW, marginX, radius, padX };
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -416,7 +412,7 @@ function downloadSvg() {
   const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const linesSvg = layout.lines.map((line, i) => {
-    const y = layout.headlineTop + layout.size * 0.85 + i * layout.lineHeight;
+    const y = layout.firstLineY + i * layout.lineHeight;
     return `<text x="${layout.marginX.toFixed(1)}" y="${y.toFixed(1)}" font-family="Noto Sans, Arial, sans-serif" font-weight="400" font-size="${layout.size}" fill="#ffffff">${escape(line)}</text>`;
   }).join('\n    ');
 
